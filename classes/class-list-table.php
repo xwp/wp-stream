@@ -332,7 +332,7 @@ class List_Table extends \WP_List_Table {
 					);
 				}
 				if ( $record->meta ) {
-					$out .= '<details><summary>' . esc_html__( 'Metadata', 'stream' ) . '</summary><pre>' . print_r( $record->meta, true ) . '</pre></details>';
+					$out .= '<details><summary>' . esc_html__( 'Metadata', 'stream' ) . '</summary><pre>' . esc_html( print_r( $record->meta, true ) ) . '</pre></details>';
 				}
 				$out .= $this->get_action_links( $record );
 				break;
