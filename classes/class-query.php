@@ -234,22 +234,22 @@ class Query {
 		 */
 		$where = apply_filters( 'wp_stream_db_query_where', $where );
 
-                /** 
-                 * Build the query but just to get the IDs
-                 */
-                $query = "SELECT ID
-                FROM $wpdb->stream
-                WHERE 1=1 {$where}
-                {$orderby}
-                {$limits}";
-    
-                $ids = $wpdb->get_col( $query ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		/**
+		* Build the query but just to get the IDs
+		*/
+		$query = "SELECT ID
+		FROM $wpdb->stream
+		WHERE 1=1 {$where}
+		{$orderby}
+		{$limits}";
 
-                if ( $ids ) { 
-                        $where .= $wpdb->prepare( " AND $wpdb->stream.ID IN (%d" . str_repeat( ', %d', count( $ids ) - 1 ) . ')', $ids );
-                } else {
-                        $where .= ' AND 0 = 1';
-                }
+		$ids = $wpdb->get_col( $query ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+
+		if ( $ids ) {
+			$where .= $wpdb->prepare( " AND $wpdb->stream.ID IN (%d" . str_repeat( ', %d', count( $ids ) - 1 ) . ')', $ids );
+		} else {
+			$where .= ' AND 0 = 1';
+		}
 
 		/**
 		 * BUILD THE FINAL QUERY
@@ -288,20 +288,20 @@ class Query {
 
 		$items = array();
 		foreach ( $wpdb->get_results( $query ) as $item ) { // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-				if ( ! isset( $items[ $item->ID ] ) ) {
-						$items[ $item->ID ] = clone $item;
-						$items[ $item->ID ]->meta = array(); 
-						unset( $items[ $item->ID ]->meta_key );
-						unset( $items[ $item->ID ]->meta_value );
+			if ( ! isset( $items[ $item->ID ] ) ) {
+				$items[ $item->ID ] = clone $item;
+				$items[ $item->ID ]->meta = array();
+				unset( $items[ $item->ID ]->meta_key );
+				unset( $items[ $item->ID ]->meta_value );
+			}
+			if ( isset( $items[ $item->ID ]->meta[ $item->meta_key ] ) ) {
+				if ( ! is_array( $items[ $item->ID ]->meta[ $item->meta_key ] ) ) {
+					$items[ $item->ID ]->meta[ $item->meta_key ] = array( $items[ $item->ID ]->meta[ $item->meta_key ] );
 				}
-				if ( isset( $items[ $item->ID ]->meta[ $item->meta_key ] ) ) {
-						if ( ! is_array( $items[ $item->ID ]->meta[ $item->meta_key ] ) ) {
-								$items[ $item->ID ]->meta[ $item->meta_key ] = array( $items[ $item->ID ]->meta[ $item->meta_key ] );
-						}
-						$items[ $item->ID ]->meta[ $item->meta_key ][] = $item->meta_value;
-				} else {
-						$items[ $item->ID ]->meta[ $item->meta_key ] = $item->meta_value;
-				}
+				$items[ $item->ID ]->meta[ $item->meta_key ][] = $item->meta_value;
+			} else {
+				$items[ $item->ID ]->meta[ $item->meta_key ] = $item->meta_value;
+			}
 		}
 		/**
 		 * QUERY THE DATABASE FOR RESULTS
