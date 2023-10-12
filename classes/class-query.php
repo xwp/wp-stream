@@ -219,10 +219,10 @@ class Query {
 			$selects[] = "$wpdb->stream.*";
 		}
 
-		$join = "LEFT JOIN $wpdb->streammeta ON $wpdb->stream.ID = $wpdb->streammeta.record_id";
+		$join      = "LEFT JOIN $wpdb->streammeta ON $wpdb->stream.ID = $wpdb->streammeta.record_id";
 		$selects[] = "$wpdb->streammeta.meta_key";
 		$selects[] = "$wpdb->streammeta.meta_value";
-		$select = implode( ', ', $selects );
+		$select    = implode( ', ', $selects );
 
 		/**
 		 * Filters query WHERE statement as an alternative to filtering
@@ -237,7 +237,7 @@ class Query {
 		/**
 		* Build the query but just to get the IDs
 		*/
-		$query = "SELECT ID
+		$query = "SELECT $wpdb->stream.ID
 		FROM $wpdb->stream
 		WHERE 1=1 {$where}
 		{$orderby}
@@ -273,7 +273,6 @@ class Query {
 		// Build result count query.
 		$count_query = "SELECT COUNT(*) as found
 		FROM $wpdb->stream
-		{$join}
 		WHERE 1=1 {$where}";
 
 		/**
@@ -289,7 +288,7 @@ class Query {
 		$items = array();
 		foreach ( $wpdb->get_results( $query ) as $item ) { // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 			if ( ! isset( $items[ $item->ID ] ) ) {
-				$items[ $item->ID ] = clone $item;
+				$items[ $item->ID ]       = clone $item;
 				$items[ $item->ID ]->meta = array();
 				unset( $items[ $item->ID ]->meta_key );
 				unset( $items[ $item->ID ]->meta_value );
