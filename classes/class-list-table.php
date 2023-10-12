@@ -332,7 +332,20 @@ class List_Table extends \WP_List_Table {
 					);
 				}
 				if ( $record->meta ) {
-					$out .= '<details><summary>' . esc_html__( 'Metadata', 'stream' ) . '</summary><pre>' . esc_html( print_r( $record->meta, true ) ) . '</pre></details>';
+					$meta = array();
+					foreach ( $record->meta as $key => $value ) {
+						if ( false === strpos( $key, '[' ) ) {
+							$meta[ $key ] = $value;
+						} else {
+							$main_key = substr( $key, 0, strpos( $key, '[' ) );
+							$sub_key  = substr( $key, strpos( $key, '[' ) + 1, - 1 );
+
+							$meta[ $main_key ][ $sub_key ] = $value;
+						}
+					}
+					$out  .= '<details><summary>' . esc_html__( 'Metadata', 'stream' ) . '</summary><pre>';
+					$out  .= esc_html( print_r( $meta, true ) );
+					 $out .= '</pre></details>';
 				}
 				$out .= $this->get_action_links( $record );
 				break;

@@ -79,10 +79,17 @@ class DB_Driver_WPDB implements DB_Driver {
 		$record_id = $wpdb->insert_id;
 
 		// Insert record meta.
-		foreach ( (array) $meta as $key => $vals ) {
-			foreach ( (array) $vals as $val ) {
+		foreach ( (array) $meta as $key => $val ) {
+			if ( is_array( $val ) ) {
+				$vals = $val;
+				foreach ( $vals as $k => $val ) {
+					if ( is_scalar( $val ) && '' !== $val ) {
+						$this->insert_meta( $record_id, $key . '[' . $k . ']', substr( $val, 0, 200 ) );
+					}
+				}
+			} else {
 				if ( is_scalar( $val ) && '' !== $val ) {
-					$this->insert_meta( $record_id, $key, $val );
+					$this->insert_meta( $record_id, $key, substr( $val, 0, 200 ) );
 				}
 			}
 		}

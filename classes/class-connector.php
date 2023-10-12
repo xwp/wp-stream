@@ -206,6 +206,7 @@ abstract class Connector {
 
 	/**
 	 * Compare two values and return changed keys if they are arrays
+	 * x
 	 *
 	 * @param  mixed    $old_value Value before change.
 	 * @param  mixed    $new_value Value after change.
