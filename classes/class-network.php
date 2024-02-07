@@ -351,13 +351,13 @@ class Network {
 	 * Wrapper for the settings API to work on the network settings page
 	 */
 	public function network_options_action() {
-		$allowed_referers = array(
+		$allowed_referrers = array(
 			$this->network_settings_page_slug,
 			$this->default_settings_page_slug,
 		);
 
 		// @codingStandardsIgnoreLine
-		if ( ! isset( $_GET['action'] ) || ! in_array( $_GET['action'], $allowed_referers, true ) ) {
+		if ( ! isset( $_GET['action'] ) || ! in_array( $_GET['action'], $allowed_referrers, true ) ) {
 			return;
 		}
 

@@ -315,7 +315,7 @@ class Connector_Woocommerce extends Connector {
 	 * Prevent the Stream Comments connector from logging status
 	 * change comments on orders
 	 *
-	 * @filter wp_stream_commnent_exclude_comment_types
+	 * @filter wp_stream_comment_exclude_comment_types
 	 *
 	 * @param array $comment_types  Ignored post types.
 	 *

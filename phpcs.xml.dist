@@ -7,7 +7,7 @@
 	<arg value="sp" /><!-- Show sniff codes in all reports and progress. -->
 
 	<rule ref="PHPCompatibilityWP" />
-	<config name="testVersion" value="5.6-" /><!-- Test for PHP compatability for 5.6 and above. -->
+	<config name="testVersion" value="5.6-" /><!-- Test for PHP compatibility for 5.6 and above. -->
 
 	<rule ref="WordPress-Docs">
 		<type>warning</type><!-- FIXME Report but ignore for now. -->

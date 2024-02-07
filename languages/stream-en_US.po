@@ -2582,7 +2582,7 @@ msgstr ""
 #: connectors/class-connector-wordpress-seo.php:160
 #, php-format
 msgctxt "Post type singular name"
-msgid "Delete %s Permenantly"
+msgid "Delete %s Permanently"
 msgstr ""
 
 #: connectors/class-connector-posts.php:104

@@ -110,7 +110,7 @@ class Connector_Posts extends Connector {
 				/* translators: %s: a post type singular name (e.g. "Post") */
 				$links[ sprintf( esc_html_x( 'Restore %s', 'Post type singular name', 'stream' ), $post_type_name ) ] = $untrash;
 				/* translators: %s: a post type singular name (e.g. "Post") */
-				$links[ sprintf( esc_html_x( 'Delete %s Permenantly', 'Post type singular name', 'stream' ), $post_type_name ) ] = $delete;
+				$links[ sprintf( esc_html_x( 'Delete %s Permanently', 'Post type singular name', 'stream' ), $post_type_name ) ] = $delete;
 			} else {
 				/* translators: %s a post type singular name (e.g. "Post") */
 				$links[ sprintf( esc_html_x( 'Edit %s', 'Post type singular name', 'stream' ), $post_type_name ) ] = get_edit_post_link( $post->ID );

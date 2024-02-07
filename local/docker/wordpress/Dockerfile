@@ -6,7 +6,7 @@ FROM wordpress:php${PHP_VERSION}-apache
 # Default version which supports the default PHP 7.4.
 ARG XDEBUG_VERSION=2.9.6
 
-# Include our Composer vendor binrary path into global path.
+# Include our Composer vendor binary path into global path.
 ENV PATH="/var/www/html/wp-content/plugins/stream-src/vendor/bin:${PATH}"
 
 RUN apt-get update; \

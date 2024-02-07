@@ -459,7 +459,7 @@ class Connector_Settings extends Connector {
 		/**
 		 * Filter allows for insertion of serialized labels
 		 *
-		 * @param  array  $lables  Serialized labels
+		 * @param  array  $labels  Serialized labels
 		 * @return array  Updated array of serialzed labels
 		 */
 		$labels = apply_filters( 'wp_stream_serialized_labels', $labels );

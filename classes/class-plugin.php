@@ -18,7 +18,7 @@ class Plugin {
 	 *
 	 * @const string
 	 */
-	const VERSION = '3.10.0';
+	const VERSION = '4.0.0';
 
 	/**
 	 * WP-CLI command
@@ -91,6 +91,13 @@ class Plugin {
 	public $locations = array();
 
 	/**
+	 * IP address for the current request to be associated with the log entry.
+	 *
+	 * @var null|false|string Valid IP address, null if not set, false if invalid.
+	 */
+	protected $client_ip_address;
+
+	/**
 	 * Class constructor
 	 */
 	public function __construct() {
@@ -137,6 +144,9 @@ class Plugin {
 
 		// Load logger class.
 		$this->log = apply_filters( 'wp_stream_log_handler', new Log( $this ) );
+
+		// Set the IP address for the current request.
+		$this->client_ip_address = wp_stream_filter_input( INPUT_SERVER, 'REMOTE_ADDR', FILTER_VALIDATE_IP );
 
 		// Load settings and connectors after widgets_init and before the default init priority.
 		add_action( 'init', array( $this, 'init' ), 9 );
@@ -314,5 +324,14 @@ class Plugin {
 		}
 
 		return false;
+	}
+
+	/**
+	 * Get the IP address for the current request.
+	 *
+	 * @return false|null|string Valid IP address, null if not set, false if invalid.
+	 */
+	public function get_client_ip_address() {
+		return apply_filters( 'wp_stream_client_ip_address', $this->client_ip_address );
 	}
 }

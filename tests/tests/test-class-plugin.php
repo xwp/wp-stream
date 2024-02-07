@@ -84,4 +84,8 @@ class Test_Plugin extends WP_StreamTestCase {
 		$version = $this->plugin->get_version();
 		$this->assertNotEmpty( $version );
 	}
+
+	public function test_get_client_ip_address() {
+		$this->assertEquals( $_SERVER['REMOTE_ADDR'], $this->plugin->get_client_ip_address() );
+	}
 }

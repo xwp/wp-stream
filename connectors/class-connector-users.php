@@ -108,7 +108,7 @@ class Connector_Users extends Connector {
 	}
 
 	/**
-	 * Get an array of role lables assigned to a specific user.
+	 * Get an array of role labels assigned to a specific user.
 	 *
 	 * @param  object|int $user User object or user ID to get roles for.
 	 *

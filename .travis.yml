@@ -74,8 +74,6 @@ before_install:
   - docker-compose pull
   - nvm install
   - nvm use
-  # Lock to Composer version 1 for now.
-  - composer self-update --1
 
 install:
   - npm install

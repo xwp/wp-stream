@@ -186,7 +186,7 @@ class Alert {
 	/**
 	 * Determine the title of the alert.
 	 *
-	 * @todo enhance human readibility
+	 * @todo enhance human readability
 	 * @return string The title of the alert
 	 */
 	public function get_title() {
@@ -207,7 +207,7 @@ class Alert {
 	}
 
 	/**
-	 * Retreive current alert type object
+	 * Retrieve current alert type object
 	 *
 	 * @return Alert_Type
 	 */

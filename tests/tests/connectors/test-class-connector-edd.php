@@ -185,7 +185,7 @@ class Test_WP_Stream_Connector_EDD extends WP_StreamTestCase {
 		$this->create_simple_download();
 		$this->create_simple_percent_discount();
 
-		// Check assertion flage
+		// Check assertion flags
 		$this->assertSame( $asserted, 2 );
 	}
 

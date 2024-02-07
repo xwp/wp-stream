@@ -38,7 +38,7 @@ class Test_WP_Stream_Connector_User_Switching extends WP_StreamTestCase {
 		$old_user_id    = self::factory()->user->create(
 			array(
 				'user_login'   => 'oldtestuser',
-				'user_role'    => 'adminstrator',
+				'user_role'    => 'administrator',
 				'display_name' => 'oldtestuserdisplay',
 			)
 		);
@@ -48,7 +48,7 @@ class Test_WP_Stream_Connector_User_Switching extends WP_StreamTestCase {
 		$user_id        = self::factory()->user->create(
 			array(
 				'user_login'   => 'testuser',
-				'user_role'    => 'adminstrator',
+				'user_role'    => 'administrator',
 				'display_name' => 'testuserdisplay',
 			)
 		);
@@ -88,14 +88,14 @@ class Test_WP_Stream_Connector_User_Switching extends WP_StreamTestCase {
 		$old_user_id    = self::factory()->user->create(
 			array(
 				'user_login'   => 'oldtestuser',
-				'user_role'    => 'adminstrator',
+				'user_role'    => 'administrator',
 				'display_name' => 'oldtestuserdisplay',
 			)
 		);
 		$user_id        = self::factory()->user->create(
 			array(
 				'user_login'   => 'testuser',
-				'user_role'    => 'adminstrator',
+				'user_role'    => 'administrator',
 				'display_name' => 'testuserdisplay',
 			)
 		);
@@ -138,7 +138,7 @@ class Test_WP_Stream_Connector_User_Switching extends WP_StreamTestCase {
 		$user_id        = self::factory()->user->create(
 			array(
 				'user_login'   => 'testuser',
-				'user_role'    => 'adminstrator',
+				'user_role'    => 'administrator',
 				'display_name' => 'testuserdisplay',
 			)
 		);

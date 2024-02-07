@@ -124,7 +124,7 @@ class Connector_Taxonomies extends Connector {
 	}
 
 	/**
-	 * Catch registration of taxonomies after inital loading, so we can cache its labels
+	 * Catch registration of taxonomies after initial loading, so we can cache its labels
 	 *
 	 * @action registered_taxonomy
 	 *

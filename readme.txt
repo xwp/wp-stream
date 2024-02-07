@@ -2,8 +2,8 @@
 Contributors: xwp
 Tags: wp stream, stream, activity, logs, track
 Requires at least: 4.5
-Tested up to: 6.3
-Stable tag: 3.10.0
+Tested up to: 6.4
+Stable tag: 4.0.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -65,12 +65,43 @@ With Stream’s powerful logging, you’ll have the valuable information you nee
  * WP-CLI command for querying records
 
 
-= Known Issues
+== Configuration ==
+
+Most of the plugin configuration is available under the "Stream" → "Settings" page in the WordPress dashboard.
+
+
+= Request IP Address =
+
+The plugin expects the `$_SERVER['REMOTE_ADDR']` variable to contain the verified IP address of the current request. On hosting environments with PHP processing behind reverse proxies or CDNs the actual client IP is passed to PHP through request HTTP headers such as `X-Forwarded-For` and `True-Client-IP` which can't be trusted without an additional layer of validation. Update your server configuration to set the `$_SERVER['REMOTE_ADDR']` variable to the verified client IP address.
+
+As a workaround, you can use the `wp_stream_client_ip_address` filter to adapt the IP address:
+
+`add_filter(
+	'wp_stream_client_ip_address',
+	function( $client_ip ) {
+		// Trust the first IP in the X-Forwarded-For header.
+		// ⚠️ Note: This is inherently insecure and can easily be spoofed!
+		if ( ! empty( $_SERVER['HTTP_X_FORWARDED_FOR'] ) ) {
+			$forwarded_ips = explode( ',' $_SERVER['HTTP_X_FORWARDED_FOR'] );
+
+			if ( filter_var( $forwarded_ips[0], FILTER_VALIDATE_IP ) ) {
+				return $forwarded_ips[0];
+			}
+		}
+
+		return $client_ip;
+	}
+);`
+
+⚠️ **WARNING:** The above is an insecure workaround that you should only use when you fully understand what this implies. Relying on any variable with the `HTTP_*` prefix is prone to spoofing and cannot be trusted!
+
+
+== Known Issues ==
 
  * We have temporarily disabled the data removal feature through plugin uninstallation, starting with version 3.9.3. We identified a few edge cases that did not behave as expected and we decided that a temporary removal is preferable at this time for such an impactful and irreversible operation. Our team is actively working on refining this feature to ensure it performs optimally and securely. We plan to reintroduce it in a future update with enhanced safeguards.
 
 
-= Contribute =
+== Contribute ==
 
 There are several ways you can get involved to help make Stream better:
 
@@ -96,12 +127,18 @@ Past Contributors: fjarrett, shadyvb, chacha, westonruter, johnregan3, jacobschw
 
 == Upgrade Notice ==
 
-= 3.9.0 =
+= 4.0.0 =
 
-Track changes to posts when using the block editor.
+Use only `$_SERVER['REMOTE_ADDR']` as the client IP address for event logs without additional support for `X-Forwarded-For` HTTP request header value which could be spoofed. See the changelog for additional details.
 
 
 == Changelog ==
+
+= 4.0.0 - January 9, 2024 =
+
+- Fix: Use only `$_SERVER['REMOTE_ADDR']` as the reliable client IP address for event logs. This might cause incorrectly reported event log IP addresses on environments where PHP is behind a proxy server or CDN. Use the `wp_stream_client_ip_address` filter to set the correct client IP address (see `readme.txt` for instructions) or configure the hosting environment to report the correct IP address in `$_SERVER['REMOTE_ADDR']` (issue [#1456](https://github.com/xwp/stream/issues/1456), props [@calvinalkan](https://github.com/calvinalkan)).
+- Tweak: fix typos in message strings and code comments (fixed in [#1461](https://github.com/xwp/stream/pull/1461) by [@szepeviktor](https://github.com/szepeviktor)).
+- Development: use Composer v2 during CI runs (fixed in [#1465](https://github.com/xwp/stream/pull/1465) by [@szepeviktor](https://github.com/szepeviktor)).
 
 = 3.10.0 - October 9, 2023 =
 
@@ -136,7 +173,7 @@ Track changes to posts when using the block editor.
 
 - Fix: Track changes to posts when using the block editor by making the Posts connector to run on both frontend and backend requests since block editor changes happen over the REST API [#1264](https://github.com/xwp/stream/pull/1264), props [@coreymckrill](https://github.com/coreymckrill).
 - Fix: Don't store empty log event parameters [#1307](https://github.com/xwp/stream/pull/1307), props [@lkraav](https://github.com/lkraav).
-- Development: Adjust the local development environment to use MariaDB containers for ARM processor compatabilty.
+- Development: Adjust the local development environment to use MariaDB containers for ARM processor compatibility.
 
 = 3.8.2 - October 12, 2021 =
 
@@ -341,7 +378,7 @@ Props [@lukecarbis](https://github.com/lukecarbis)
 * Tweak: Minor security improvements
 * Fix: New and improved Gravity Forms connector, works much better ([#780](https://github.com/xwp/stream/pull/780)) (thanks [Rob](https://github.com/rob)!)
 * Fix: Stream no longer explodes on < PHP 5.3, when trying to tell you that it explodes on < PHP 5.3 ([#781](https://github.com/xwp/stream/pull/781))
-* Fix: Fixed a smal typo ([62455c5](https://github.com/xwp/stream/commit/62455c518b95ddaf5e6c6c0733e7d03e5aa1311c))
+* Fix: Fixed a small typo ([62455c5](https://github.com/xwp/stream/commit/62455c518b95ddaf5e6c6c0733e7d03e5aa1311c))
 * Fix: Multiple Multisite Mistakes Mended ([#788](https://github.com/xwp/stream/pull/788))
 * Fix: Internet Explorer 8 fix!! IE8!? Come on, people, it's 2015. ([#789](https://github.com/xwp/stream/pull/789))
 * Fix: EDD connector bug ([#790](https://github.com/xwp/stream/pull/790))
@@ -571,7 +608,7 @@ Props [@westonruter](https://github.com/westonruter), [@fjarrett](https://github
 * Fix: Non-Administrator users seeing errors in Settings records ([#406](https://github.com/x-team/wp-stream/issues/406))
 * Fix: Uninstall confirmation message doesn't display ([#411](https://github.com/x-team/wp-stream/issues/411))
 * Fix: TTL purge schedule is never setup ([#412](https://github.com/x-team/wp-stream/issues/412))
-* Fix: NextGen compability issue ([#416](https://github.com/x-team/wp-stream/issues/416))
+* Fix: NextGen compatibility issue ([#416](https://github.com/x-team/wp-stream/issues/416))
 * Fix: Stream Feeds Key not being automatically generated ([#420](https://github.com/x-team/wp-stream/issues/420))
 
 Props [@fjarrett](https://github.com/fjarrett), [@lukecarbis](https://github.com/lukecarbis), [@c3mdigital](https://github.com/c3mdigital), [@westonruter](https://github.com/westonruter), [@shadyvb](https://github.com/shadyvb), [@powelski](https://github.com/powelski), [@johnregan3](https://github.com/johnregan3), [@jonathanbardo](https://github.com/jonathanbardo), [@desaiuditd](https://github.com/desaiuditd)

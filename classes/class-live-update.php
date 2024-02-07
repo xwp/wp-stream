@@ -170,7 +170,7 @@ class Live_Update {
 	/**
 	 * Handles live updates for Stream Post List
 	 *
-	 * @action heartbeat_recieved
+	 * @action heartbeat_received
 	 *
 	 * @param array $response Response to be sent to heartbeat tick.
 	 * @param array $data     Data from heartbeat send.

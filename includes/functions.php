@@ -16,7 +16,7 @@
  * @param int    $filter         The ID of the filter to apply.
  * @param mixed  $options        Associative array of options or bitwise disjunction of flags. If filter accepts options, flags can be provided in "flags" field of array.
  *
- * @return Value of the requested variable on success, FALSE if the filter fails, or NULL if the $variable_name is not set.
+ * @return mixed|false|null Value of the requested variable on success, FALSE if the filter fails, or NULL if the $variable_name is not set.
  */
 function wp_stream_filter_input( $type, $variable_name, $filter = null, $options = array() ) {
 	return call_user_func_array( array( '\WP_Stream\Filter_Input', 'super' ), func_get_args() );
