@@ -7,6 +7,9 @@
 
 namespace WP_Stream;
 
+use WP_Post;
+use WP_Taxonomy;
+
 /**
  * Class - Connector_Posts
  */
@@ -24,9 +27,40 @@ class Connector_Posts extends Connector {
 	 * @var array
 	 */
 	public $actions = array(
-		'transition_post_status',
 		'deleted_post',
+		'wp_after_insert_post',
+		'transition_post_status',
+		'set_object_terms',
 	);
+
+	/**
+	 * Adds an action to retrieve previous post data before updating a post.
+	 */
+	public function register() {
+		parent::register();
+		add_action( 'set_object_terms', array( $this, 'get_previous_post_terms' ), 10, 6 );
+	}
+
+	/**
+	 * Add an array with the previous terms to a filter for future use.
+	 *
+	 * @param int|string] $object_id The post id.
+	 * @param array       $terms The current terms.
+	 * @param array       $tt_ids The current term taxonomy ids.
+	 * @param string      $taxonomy The taxonomy slug.
+	 * @param bool        $append Whether or not the terms were appended.
+	 * @param array       $old_tt_ids The previous term taxonomy ids.
+	 * @return void
+	 */
+	public function get_previous_post_terms( $object_id, $terms, $tt_ids, $taxonomy, $append, $old_tt_ids ) {
+
+		add_filter(
+			"wp_stream_previous_{$object_id}_{$taxonomy}_terms",
+			static function () use ( $old_tt_ids ) {
+				return (array) $old_tt_ids;
+			}
+		);
+	}
 
 	/**
 	 * Return translated connector label
@@ -81,7 +115,8 @@ class Connector_Posts extends Connector {
 	public function action_links( $links, $record ) {
 		$post = get_post( $record->object_id );
 
-		if ( $post && $post->post_status === $record->get_meta( 'new_status', true ) ) {
+		// Let's get action links for all posts.
+		if ( $post ) {
 			$post_type_name = $this->get_post_type_name( get_post_type( $post->ID ) );
 
 			if ( 'trash' === $post->post_status ) {
@@ -150,24 +185,60 @@ class Connector_Posts extends Connector {
 	}
 
 	/**
+	 * Generates a list of terms based on the provided term IDs and taxonomy.
+	 *
+	 * @param array  $updated   The array of term IDs to generate the list from.
+	 * @param string $taxonomy  The taxonomy to which the terms belong.
+	 *
+	 * @return string  The generated list of terms as HTML links.
+	 */
+	private function make_term_list( $updated, $taxonomy ) {
+		$list = array_reduce(
+			$updated,
+			function ( $acc, $id ) use ( $taxonomy ) {
+				$term = get_term( $id, $taxonomy );
+
+				if ( empty( $term ) || is_wp_error( $term ) ) {
+					return $acc;
+				}
+
+				return $acc .= sprintf(
+					'<a href="%s">%s</a>, ',
+					get_term_link( $term, $taxonomy ),
+					$term->name
+				);
+			},
+			''
+		);
+
+		return rtrim( $list, ', ' );
+	}
+
+	/**
 	 * Log all post status changes ( creating / updating / trashing )
 	 *
 	 * @action transition_post_status
 	 *
-	 * @param mixed    $new_status New status.
-	 * @param mixed    $old_status Old status.
-	 * @param \WP_Post $post       Post object.
+	 * @param mixed   $new_status New status.
+	 * @param mixed   $old_status Old status.
+	 * @param WP_Post $post       Post object.
 	 */
 	public function callback_transition_post_status( $new_status, $old_status, $post ) {
 
-		if ( in_array( $post->post_type, $this->get_excluded_post_types(), true ) ) {
+		// Don't log the non-included post types.
+		if ( ! ( $post instanceof WP_Post ) || in_array( $post->post_type, $this->get_excluded_post_types(), true ) ) {
 			return;
 		}
 
-		// We don't want the meta box update request, just the post update.
+		// We don't want the meta box update request either, just the postupdate.
 		if ( ! empty( wp_stream_filter_input( INPUT_GET, 'meta-box-loader' ) ) ) {
 			return;
 		}
+
+		/**
+		 * Whether or not there should also be a "post updated" log.
+		 */
+		$should_log_update = false;
 
 		$start_statuses = array( 'auto-draft', 'inherit', 'new' );
 		if ( in_array( $new_status, $start_statuses, true ) ) {
@@ -248,11 +319,11 @@ class Connector_Posts extends Connector {
 			$action  = 'trashed';
 		} else {
 			/* translators: %1$s: a post title, %2$s: a post type singular name (e.g. "Hello World", "Post") */
-			$summary = _x(
-				'"%1$s" %2$s updated',
-				'1: Post title, 2: Post type singular name',
-				'stream'
-			);
+			$summary = false;
+		}
+
+		if ( ! $summary ) {
+			return;
 		}
 
 		if ( in_array( $old_status, $start_statuses, true ) && ! in_array( $new_status, $start_statuses, true ) ) {
@@ -263,28 +334,11 @@ class Connector_Posts extends Connector {
 			$action = 'updated';
 		}
 
-		$revision_id = null;
-
-		if ( wp_revisions_enabled( $post ) ) {
-			$revision = get_children(
-				array(
-					'post_type'      => 'revision',
-					'post_status'    => 'inherit',
-					'post_parent'    => $post->ID,
-					'posts_per_page' => 1, // VIP safe.
-					'orderby'        => 'post_date',
-					'order'          => 'DESC',
-				)
-			);
-
-			if ( $revision ) {
-				$revision    = array_values( $revision );
-				$revision_id = $revision[0]->ID;
-			}
-		}
+		$revision_id = $this->get_revision_id( $post );
 
 		$post_type_name = strtolower( $this->get_post_type_name( $post->post_type ) );
 
+		add_filter( 'wp_stream_has_post_transition_log', '__return_true' );
 		$this->log(
 			$summary,
 			array(
@@ -303,6 +357,213 @@ class Connector_Posts extends Connector {
 	}
 
 	/**
+	 * This currently only looks at the posts table.
+	 *
+	 * @param int|string $post_id The post id.
+	 * @param WP_Post    $post_after The post object of the final post.
+	 * @param bool       $update Whether or not this is an updated post.
+	 * @param WP_Post    $post_before The post object before it was updated.
+	 * @return void
+	 */
+	public function callback_wp_after_insert_post( $post_id, $post_after, $update, $post_before ) {
+
+		// Don't log newly created posts or the non-included post types.
+		if ( ! $update || in_array( $post_after->post_type, $this->get_excluded_post_types(), true ) ) {
+			return;
+		}
+
+		// We don't want the meta box update request either, just the post update.
+		if ( ! empty( wp_stream_filter_input( INPUT_GET, 'meta-box-loader' ) ) ) {
+			return;
+		}
+
+		$start_statuses = array( 'auto-draft', 'inherit', 'new' );
+		if (
+			in_array( $post_after->post_status, $start_statuses, true ) || in_array( $post_before->post_status, $start_statuses, true ) || ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) ) {
+			return;
+		}
+
+		$action         = 'updated';
+		$post_type_name = $this->get_post_type_name( $post_after->post_type );
+
+		$updated_fields = array();
+
+		// Find out what was updated.
+		foreach ( $post_after as $field => $value ) {
+			if ( $value === $post_before->$field ) {
+				continue;
+			}
+
+			switch ( $field ) {
+				case 'post_author':
+					$updated_fields['post_author'] = sprintf(
+						/* Translators: %1$s is the previous post author, %2$s is the current post author */
+						__( '%1$s to %2$s', 'stream' ),
+						$this->get_author_maybe_link( $post_before->post_author ),
+						$this->get_author_maybe_link( $post_after->post_author )
+					);
+					break;
+				// Not including these for now.
+				case 'post_modified':
+				case 'post_modified_gmt':
+					// Handled in transition_post_status hook.
+				case 'post_status':
+					break;
+				case 'post_content':
+					$updated_fields['post_content'] = __( 'updated', 'stream' );
+					break;
+				case 'post_date':
+				case 'post_date_gmt':
+					if ( apply_filters( 'wp_stream_has_post_transition_log', false ) ) {
+						break;
+					}
+					// Break if there's a log, otherwise pass through.
+				default:
+					$updated_fields[ $field ] = sprintf(
+						/* Translators: %1$s is the previous value, %2$s is the current value */
+						__( '"%1$s" to "%2$s"', 'stream' ),
+						esc_html( $post_before->$field ),
+						esc_html( $value )
+					);
+					break;
+			}
+		}
+
+		$updated_terms     = array();
+		$included_taxes    = $this->get_included_taxonomies( $post_after->ID );
+		$post_before_terms = true;
+
+		// Only do this if the filter is working.
+		if ( false !== $post_before_terms ) {
+
+			foreach ( $included_taxes as $tax ) {
+
+				$previous_terms = apply_filters( "wp_stream_previous_{$post_after->ID}_{$tax}_terms", false );
+
+				// Bail if the filter failed.
+				if ( false === $previous_terms ) {
+					continue;
+				}
+
+				$tax_terms = wp_list_pluck( get_the_terms( $post_after->ID, $tax ), 'term_taxonomy_id' );
+
+				$added   = array_diff( $tax_terms, $previous_terms );
+				$removed = array_diff( $previous_terms, $tax_terms );
+
+				if ( ! empty( $added ) ) {
+					$updated_terms[ $tax ]['added'] = $added;
+				}
+
+				if ( ! empty( $removed ) ) {
+					$updated_terms[ $tax ]['removed'] = $removed;
+				}
+			}
+		}
+
+		// If none of the post fields or terms were updated, there should be a log somewhere else.
+		if ( empty( $updated_fields ) && empty( $updated_terms ) ) {
+			return;
+		}
+
+		$details = '';
+
+		if ( ! empty( $updated_terms ) ) {
+			foreach ( $updated_terms as $tax => $term_updates ) {
+				$taxonomy = get_taxonomy( $tax );
+				$tax_name = ( $taxonomy instanceof WP_Taxonomy ) ? $taxonomy->labels->singular_name : $tax;
+				if ( ! empty( $term_updates['added'] ) ) {
+					$added_terms = sprintf(
+						/* Translators: %1$s is the taxonomy slug and %2$s is a linked list of the added terms. */
+						__( ' %1$s terms added: %2$s ', 'stream' ),
+						$tax_name,
+						$this->make_term_list( $term_updates['added'], $tax )
+					);
+					$details .= sprintf( '%s<br />', $added_terms );
+				}
+
+				if ( ! empty( $term_updates['removed'] ) ) {
+					$removed_terms = sprintf(
+						/* Translators: %1$s is the taxonomy slug and %2$s is a linked list of the removed terms. */
+						__( ' %1$s terms removed: %2$s', 'stream' ),
+						$tax_name,
+						$this->make_term_list( $term_updates['removed'], $tax )
+					);
+
+					$details .= sprintf( '%s<br />', $removed_terms );
+				}
+			}
+		}
+
+		if ( ! empty( $updated_fields ) ) {
+			$details .= __( 'Post updates: ', 'stream' );
+			// Creating a string for the summary. The array will be stored in the meta.
+			$details .= array_reduce(
+				array_keys( $updated_fields ),
+				function ( $acc, $key ) use ( $updated_fields ) {
+					return $acc .= sprintf( ' %s: %s, ', $key, $updated_fields[ $key ] );
+				},
+				''
+			);
+
+			$details = rtrim( $details, ', ' );
+		}
+
+		/* translators: %1$s: a post title, %2$s: a post type singular name (e.g. "HelloWorld", "Post") */
+		$summary = _x(
+			'"%1$s" %2$s updated',
+			'1: Post title, 2: Post type singular name, 3: Fields updated list',
+			'stream'
+		);
+
+		$log_summary = apply_filters( 'wp_stream_post_updated_summary', "{$summary}<br />{$details}", $post_after, $post_before, $post_before_terms );
+
+		$this->log(
+			$log_summary,
+			array(
+				'post_title'     => $post_after->post_title,
+				'singular_name'  => $post_type_name,
+				'fields_updated' => wp_json_encode( $updated_fields ),
+				'terms_updated'  => wp_json_encode( $updated_terms ),
+				'post_date'      => $post_after->post_date,
+				'post_date_gmt'  => $post_after->post_date_gmt,
+				'revision_id'    => $this->get_revision_id( $post_after ),
+			),
+			$post_after->ID,
+			$post_after->post_type,
+			$action
+		);
+	}
+
+	/**
+	 * Retrieves the author name with an optional link to the author's profile.
+	 *
+	 * @param int $author_id The ID of the author.
+	 * @return string The author name with an optional link to the author's profile.
+	 */
+	private function get_author_maybe_link( $author_id ) {
+		$author = get_userdata( $author_id );
+
+		if ( empty( $author ) || is_wp_error( $author ) ) {
+			/* Translators: %d is the user id. */
+			return sprintf( __( 'Unknown user %d', 'stream' ), $author_id );
+		}
+
+		$author_name = $author->display_name;
+
+		// This is the same cap check as in `get_edit_user_link()` so we'll use it
+		// here to return just the name if the link won't work for the current user.
+		if ( ! current_user_can( 'edit_user', $author_id ) ) {
+			return $author_name;
+		}
+
+		return sprintf(
+			'<a href="%s">%s</a>',
+			esc_url( get_edit_user_link( $author_id ) ),
+			esc_html( $author_name )
+		);
+	}
+
+	/**
 	 * Log post deletion
 	 *
 	 * @action deleted_post
@@ -313,7 +574,7 @@ class Connector_Posts extends Connector {
 		$post = get_post( $post_id );
 
 		// We check if post is an instance of WP_Post as it doesn't always resolve in unit testing.
-		if ( ! ( $post instanceof \WP_Post ) || in_array( $post->post_type, $this->get_excluded_post_types(), true ) ) {
+		if ( ! ( $post instanceof WP_Post ) || in_array( $post->post_type, $this->get_excluded_post_types(), true ) ) {
 			return;
 		}
 
@@ -354,6 +615,32 @@ class Connector_Posts extends Connector {
 				'attachment',
 				'revision',
 			)
+		);
+	}
+
+	/**
+	 * Retrieves the list of taxonomies to include when logging term changes.
+	 *
+	 * By default, it includes the 'post_tag' and 'category' taxonomies.
+	 *
+	 * @param int|string $post_id The post id.
+	 *
+	 * @return array The list of taxonomies to log.
+	 */
+	public function get_included_taxonomies( $post_id ) {
+		/**
+		 * Filter the taxonomies for which term changes should be logged.
+		 *
+		 * @param array      An array of the taxonomies.
+		 * @param int|string The post id.
+		 */
+		return apply_filters(
+			'wp_stream_posts_include_taxonomies',
+			array(
+				'post_tag',
+				'category',
+			),
+			$post_id
 		);
 	}
 
@@ -414,6 +701,37 @@ class Connector_Posts extends Connector {
 
 		if ( ! wp_is_post_revision( $revision_id ) ) {
 			return false;
+		}
+
+		return $revision_id;
+	}
+
+
+	/**
+	 * Retrieves the ID of the latest revision for a given post.
+	 *
+	 * @param WP_Post $post The post object.
+	 * @return int|null The ID of the latest revision, or null if revisions are not enabled for the post.
+	 */
+	public function get_revision_id( WP_Post $post ) {
+		$revision_id = null;
+
+		if ( wp_revisions_enabled( $post ) ) {
+			$revision = get_children(
+				array(
+					'post_type'      => 'revision',
+					'post_status'    => 'inherit',
+					'post_parent'    => $post->ID,
+					'posts_per_page' => 1, // VIP safe.
+					'orderby'        => 'post_date',
+					'order'          => 'DESC',
+				)
+			);
+
+			if ( $revision ) {
+				$revision    = array_values( $revision );
+				$revision_id = $revision[0]->ID;
+			}
 		}
 
 		return $revision_id;

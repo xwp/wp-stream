@@ -119,7 +119,7 @@ class DB {
 		return array_map(
 			function ( $value ) {
 				if ( ! is_array( $value ) ) {
-					return wp_strip_all_tags( $value );
+					return wp_kses_post( $value );
 				}
 
 				return $value;

@@ -45,13 +45,6 @@ class Connector_Taxonomies extends Connector {
 	public $context_labels;
 
 	/**
-	 * Register connector in the WP Frontend
-	 *
-	 * @var bool
-	 */
-	public $register_frontend = false;
-
-	/**
 	 * Return translated connector label
 	 *
 	 * @return string Translated connector label
