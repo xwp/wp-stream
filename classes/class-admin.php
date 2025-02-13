@@ -613,6 +613,9 @@ class Admin {
 				esc_html__( "You don't have sufficient privileges to do this action.", 'stream' )
 			);
 		}
+		
+		// Create and update the database tables if they do not exist.
+		$this->plugin->install->check();
 
 		$this->erase_stream_records();
 
