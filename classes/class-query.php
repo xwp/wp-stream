@@ -219,7 +219,10 @@ class Query {
 			$selects[] = "$wpdb->stream.*";
 		}
 
-		$select = implode( ', ', $selects );
+		$join      = "LEFT JOIN $wpdb->streammeta ON $wpdb->stream.ID = $wpdb->streammeta.record_id";
+		$selects[] = "$wpdb->streammeta.meta_key";
+		$selects[] = "$wpdb->streammeta.meta_value";
+		$select    = implode( ', ', $selects );
 
 		/**
 		 * Filters query WHERE statement as an alternative to filtering
@@ -232,14 +235,30 @@ class Query {
 		$where = apply_filters( 'wp_stream_db_query_where', $where );
 
 		/**
+		* Build the query but just to get the IDs
+		*/
+		$query = "SELECT $wpdb->stream.ID
+		FROM $wpdb->stream
+		WHERE 1=1 {$where}
+		{$orderby}
+		{$limits}";
+
+		$ids = $wpdb->get_col( $query ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+
+		if ( $ids ) {
+			$where .= $wpdb->prepare( " AND $wpdb->stream.ID IN (%d" . str_repeat( ', %d', count( $ids ) - 1 ) . ')', $ids );
+		} else {
+			$where .= ' AND 0 = 1';
+		}
+
+		/**
 		 * BUILD THE FINAL QUERY
 		 */
 		$query = "SELECT {$select}
 		FROM $wpdb->stream
 		{$join}
 		WHERE 1=1 {$where}
-		{$orderby}
-		{$limits}";
+		{$orderby}";
 
 		/**
 		 * Filter allows the final query to be modified before execution
@@ -254,7 +273,6 @@ class Query {
 		// Build result count query.
 		$count_query = "SELECT COUNT(*) as found
 		FROM $wpdb->stream
-		{$join}
 		WHERE 1=1 {$where}";
 
 		/**
@@ -267,11 +285,28 @@ class Query {
 		 */
 		$count_query = apply_filters( 'wp_stream_db_count_query', $count_query, $args );
 
+		$items = array();
+		foreach ( $wpdb->get_results( $query ) as $item ) { // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+			if ( ! isset( $items[ $item->ID ] ) ) {
+				$items[ $item->ID ]       = clone $item;
+				$items[ $item->ID ]->meta = array();
+				unset( $items[ $item->ID ]->meta_key );
+				unset( $items[ $item->ID ]->meta_value );
+			}
+			if ( isset( $items[ $item->ID ]->meta[ $item->meta_key ] ) ) {
+				if ( ! is_array( $items[ $item->ID ]->meta[ $item->meta_key ] ) ) {
+					$items[ $item->ID ]->meta[ $item->meta_key ] = array( $items[ $item->ID ]->meta[ $item->meta_key ] );
+				}
+				$items[ $item->ID ]->meta[ $item->meta_key ][] = $item->meta_value;
+			} else {
+				$items[ $item->ID ]->meta[ $item->meta_key ] = $item->meta_value;
+			}
+		}
 		/**
 		 * QUERY THE DATABASE FOR RESULTS
 		 */
 		$result = array(
-			'items' => $wpdb->get_results( $query ), // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+			'items' => $items,
 			'count' => absint( $wpdb->get_var( $count_query ) ), // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 		);
 
