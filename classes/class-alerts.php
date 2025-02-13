@@ -353,6 +353,7 @@ class Alerts {
 			'description'         => __( 'Alerts for Stream.', 'stream' ),
 			'public'              => false,
 			'publicly_queryable'  => false,
+			'rewrite'             => false,
 			'exclude_from_search' => true,
 			'show_ui'             => true,
 			'show_in_menu'        => false, // @see modify_admin_menu
